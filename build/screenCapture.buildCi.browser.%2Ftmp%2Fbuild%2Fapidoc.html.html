@@ -1,0 +1,242 @@
+<html><head></head><body><div class="apidocDiv">
+<style>
+/*csslint
+*/
+.apidocDiv {
+    background: #fff;
+    font-family: Arial, Helvetica, sans-serif;
+}
+.apidocDiv a[href] {
+    color: #33f;
+    font-weight: bold;
+    text-decoration: none;
+}
+.apidocDiv a[href]:hover {
+    text-decoration: underline;
+}
+.apidocCodeCommentSpan {
+    background: #bbf;
+    color: #000;
+    display: block;
+}
+.apidocCodeKeywordSpan {
+    color: #d00;
+    font-weight: bold;
+}
+.apidocCodePre {
+    background: #eef;
+    border: 1px solid;
+    color: #777;
+    padding: 5px;
+    white-space: pre-wrap;
+}
+.apidocFooterDiv {
+    margin-top: 20px;
+    text-align: center;
+}
+.apidocModuleLi {
+    margin-top: 10px;
+}
+.apidocSectionDiv {
+    border-top: 1px solid;
+    margin-top: 20px;
+}
+.apidocSignatureSpan {
+    color: #777;
+    font-weight: bold;
+}
+</style>
+<h1>api documentation for
+    <a>github-flavored-markdown (v1.0.1)</a>
+</h1>
+<h4>The port of Showdown used on github.com</h4>
+<div class="apidocSectionDiv"><a href="#apidoc.tableOfContents" id="apidoc.tableOfContents"><h1>table of contents</h1></a><ol>
+
+    <li class="apidocModuleLi"><a href="#apidoc.module.github-flavored-markdown">module github-flavored-markdown</a><ol>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.github-flavored-markdown.converter">
+            function <span class="apidocSignatureSpan">github-flavored-markdown.</span>converter
+            <span class="apidocSignatureSpan">()</span>
+            </a>
+
+        </li>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.github-flavored-markdown.parse">
+            function <span class="apidocSignatureSpan">github-flavored-markdown.</span>parse
+            <span class="apidocSignatureSpan">(md, gh)</span>
+            </a>
+
+        </li>
+
+    </ol></li>
+
+</ol></div>
+
+<div class="apidocSectionDiv">
+<h1><a href="#apidoc.module.github-flavored-markdown" id="apidoc.module.github-flavored-markdown">module github-flavored-markdown</a></h1>
+
+
+    <h2>
+        <a href="#apidoc.element.github-flavored-markdown.converter" id="apidoc.element.github-flavored-markdown.converter">
+        function <span class="apidocSignatureSpan">github-flavored-markdown.</span>converter
+        <span class="apidocSignatureSpan">()</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">converter = function () {
+
+//
+// Globals:
+//
+
+// Global hashes, used by various utility routines
+var g_urls;
+var g_titles;
+var g_html_blocks;
+
+// Used to track when we're inside an ordered or unordered list
+// (see _ProcessListItems() for details):
+var g_list_level = 0;
+
+// isaacs - Allow passing in the GitHub object as an argument.
+this.makeHtml = function(text, gh) {
+  if (typeof gh !== "undefined") {
+    if (typeof gh === "string") gh = {nameWithOwner:gh};
+    GitHub = gh;
+  }
+
+//
+// Main function. The order in which other subs are called here is
+// essential. Link and image substitutions need to happen before
+// _EscapeSpecialCharsWithinTagAttributes(), so that any *'s or _'s in the &lt;a&gt;
+// and &lt;img&gt; tags get encoded.
+//
+
+	// Clear the global hashes. If we don't clear these, you get conflicts
+	// from other articles when generating a page which contains more than
+	// one article (e.g. an index page that shows the N most recent
+	// articles):
+	g_urls = new Array();
+	g_titles = new Array();
+	g_html_blocks = new Array();
+
+	// attacklab: Replace ~ with ~T
+	// This lets us use tilde as an escape char to avoid md5 hashes
+	// The choice of character is arbitray; anything that isn't
+    // magic in Markdown will work.
+	text = text.replace(/~/g,"~T");
+
+	// attacklab: Replace $ with ~D
+	// RegExp interprets $ as a special character
+	// when it's in a replacement string
+	text = text.replace(/\$/g,"~D");
+
+	// Standardize line endings
+	text = text.replace(/\r\n/g,"\n"); // DOS to Unix
+	text = text.replace(/\r/g,"\n"); // Mac to Unix
+
+	// Make sure text begins and ends with a couple of newlines:
+	text = "\n\n" + text + "\n\n";
+
+	// Convert all tabs to spaces.
+	text = _Detab(text);
+
+	// Strip any lines consisting only of spaces and tabs.
+	// This makes subsequent regexen easier to write, because we can
+	// match consecutive blank lines with /\n+/ instead of something
+	// contorted like /[ \t]*\n+/ .
+	text = text.replace(/^[ \t]+$/mg,"");
+
+	// Turn block-level HTML blocks into hash entries
+	text = _HashHTMLBlocks(text);
+
+	// Strip link definitions, store in hashes.
+	text = _StripLinkDefinitions(text);
+
+	text = _RunBlockGamut(text);
+
+	text = _UnescapeSpecialChars(text);
+
+	// attacklab: Restore dollar signs
+	text = text.replace(/~D/g,"$$");
+
+	// attacklab: Restore tildes
+	text = text.replace(/~T/g,"~");
+
+  // ** GFM **  Auto-link URLs and emails
+  text = text.replace(/https?\:\/\/[^"\s\&lt;\&gt;]*[^.,;'"&gt;\:\s\&lt;\&gt;\)\]\!]/g, function(wholeMatch,matchIndex){
+    var left = text.slice(0, matchIndex), right = text.slice(matchIndex)
+    if (left.match(/&lt;[^&gt;]+$/) &amp;&amp; right.match(/^[^&gt;]*&gt;/)) {return wholeMatch}
+    return "&lt;a href='" + wholeMatch + "'&gt;" + wholeMatch + "&lt;/a&gt;";
+  });
+  text = text.replace(/[a-z0-9_\-+=.]+@[a-z0-9\-]+(\.[a-z0-9-]+)+/ig, function(wholeMatch){return "&lt;a href='mailto:" + wholeMatch
+ + "'&gt;" + wholeMatch + "&lt;/a&gt;";});
+
+  // ** GFM ** Auto-link sha1 if GitHub.nameWithOwner is defined
+  text = text.replace(/[a-f0-9]{40}/ig, function(wholeMatch,matchIndex){
+    if (typeof(GitHub) == "undefined" || typeof(GitHub.nameWithOwner) == "undefined") {return wholeMatch;}
+    var left = text.slice(0, matchIndex), right = text.slice(matchIndex)
+    if (left.match(/@$/) || (left.match(/&lt;[^&gt;]+$/) &amp;&amp; right.match(/^[^&gt;]*&gt;/))) {return wholeMatch;}
+    return "&lt;a href='http://github.com/" + GitHub.nameWithOwner + "/commit/" + wholeMatch + "'&gt;" + wholeMatch.substring(0,7) + "&lt;/
+a&gt;";
+  });
+
+  // ** GFM ** Auto-link user@sha1 if GitHub.nameWithOwner is defined
+  text = text.replace(/([a-z0-9_\-+=.]+)@([a-f0-9]{40})/ig, function(wholeMatch,username,sha,matchIndex){
+    if (typeof(GitHub) == "undefined" || typeof(GitHub.nameWithOwner) == "undefined") {return wholeMatch;}
+    GitHub.repoName = GitHub.repoName || _GetRepoName()
+    var left = text.slice(0, matchIndex), right = text.slice(matchIndex)
+    if (left.match(/\/$/) || (left.match(/&lt;[^&gt;]+$/) &amp;&amp; right.match(/^[^&gt;]*&gt;/))) {return wholeMatch;}
+    return "&lt;a href='http://github.com/" + username + "/" + GitHub.repoName + "/commit/" + sha + "'&gt;" + username + "@" + sha.substring
+(0,7) + "&lt;/a&gt;";
+  });
+
+  // ** GF ...</pre></li>
+    <li>example usage<pre class="apidocCodePre">n/a</pre></li>
+    </ul>
+
+
+
+    <h2>
+        <a href="#apidoc.element.github-flavored-markdown.parse" id="apidoc.element.github-flavored-markdown.parse">
+        function <span class="apidocSignatureSpan">github-flavored-markdown.</span>parse
+        <span class="apidocSignatureSpan">(md, gh)</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">parse = function (md, gh) {
+  var converter = new Showdown.converter();
+  return converter.makeHtml(md, gh);
+}</pre></li>
+    <li>example usage<pre class="apidocCodePre">...
+As an npm package:
+
+    npm install github-flavored-markdown
+
+And then in your node program:
+
+    var ghm = require("github-flavored-markdown")
+    ghm.<span class="apidocCodeKeywordSpan">parse</span>("I **love** GHM.\n\n#2", "isaacs/npm")
+    // returns:
+    // '&lt;p&gt;I &lt;strong&gt;love&lt;/strong&gt; GHM.  '+
+    // '&lt;a href=\'http://github.com/isaacs/npm/issues/#issue/2\'&gt;#2&lt;/a&gt;&lt;/p&gt;'
+
+To get the sha/issue/fork links, pass in a second argument specifying
+the current project that things should be relative to.
+...</pre></li>
+    </ul>
+
+
+</div>
+
+<div class="apidocFooterDiv">
+    [ this document was created with
+    <a href="https://github.com/kaizhu256/node-utility2" target="_blank">utility2</a>
+    ]
+</div>
+</div>
+</body></html>
